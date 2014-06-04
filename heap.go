@@ -1,12 +1,31 @@
 package main
 
+import (
+	"fmt"
+	"sort"
+)
+
 type Heap struct {
 	Values []int
 	Size   int
 }
 
+func (heap Heap) Len() int {
+	return heap.Size
+}
+
+func (heap Heap) Less(i, j int) bool {
+	return heap.Values[i] < heap.Values[j]
+}
+
+func (heap Heap) Swap(i, j int) {
+	heap.Values[i], heap.Values[j] = heap.Values[j], heap.Values[i]
+}
+
 func NewHeap(a []int) *Heap {
-	return &Heap{a, len(a) - 1}
+	b := []int{0}
+	b = append(b, a...)
+	return &Heap{b, len(b) - 1}
 }
 
 func parent(i int) int {
@@ -21,41 +40,38 @@ func right(i int) int {
 	return 2*i + 1
 }
 
-func (heap Heap) MaxHeapify(i int) {
+func MaxHeapify(sortInterface sort.Interface, i int) {
 	l := left(i)
 	r := right(i)
 
-	a := heap.Values
-
 	largest := i
-	if l <= heap.Size && a[l] > a[i] {
+	if l <= sortInterface.Len() && sortInterface.Less(i, l) {
 		largest = l
 	}
 
-	if r <= heap.Size && a[r] > a[largest] {
+	if r <= sortInterface.Len() && sortInterface.Less(largest, r) {
 		largest = r
 	}
 
 	if largest != i {
-		a[i], a[largest] = a[largest], a[i]
+		sortInterface.Swap(i, largest)
 
-		heap.MaxHeapify(largest)
+		MaxHeapify(sortInterface, largest)
 	}
 }
 
-func (a Heap) Build() {
-	for i := a.Size / 2; i > 0; i-- {
-		a.MaxHeapify(i)
+func Build(sortInterface sort.Interface) {
+	for i := sortInterface.Len() / 2; i > 0; i-- {
+		MaxHeapify(sortInterface, i)
 	}
 }
 
 func (heap Heap) Sort() {
-	heap.Build()
+	Build(heap)
 
-	a := heap.Values
-	for i := heap.Size; i > 1; i-- {
-		a[1], a[i] = a[i], a[1]
+	for i := heap.Len(); i > 1; i-- {
+		heap.Swap(1, i)
 		heap.Size--
-		heap.MaxHeapify(1)
+		MaxHeapify(heap, 1)
 	}
 }
