@@ -17,7 +17,4 @@ func main() {
 	bufferPool.Get(&rtn, 1024)
 	fmt.Println(rtn)
 	bufferPool.Get(&rtn, 1023)
-	fmt.Println(rtn)
-	bufferPool.Get(&rtn, 1023)
-	fmt.Println(rtn)
 }
