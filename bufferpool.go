@@ -5,13 +5,6 @@ import (
 	"os"
 )
 
-const (
-	KeySize   = 2
-	DataSize  = 2
-	TotalSize = KeySize + DataSize
-	BlockSize = 4096
-)
-
 type Block struct {
 	Bytes  []byte
 	Offset int64
@@ -33,25 +26,29 @@ type BufferPool struct {
 	File       *os.File
 	Blocks     []Block
 	UsedBlocks int
+	RecordSize int64
+	BlockSize  int64
 }
 
-func NewBufferPool(path string, size int) *BufferPool {
+func NewBufferPool(path string, recordSize, blockSize, size int) *BufferPool {
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
 
+	// Make a map for blocks
 	blocks := make([]Block, size)
+	// Make a queue for LRU
 
-	return &BufferPool{file, blocks, 0}
+	return &BufferPool{file, blocks, 0, int64(recordSize), int64(blockSize)}
 }
 
 func (b *BufferPool) Get(rtn *[]byte, index int64) {
-	var totalOffset int64 = index * TotalSize
+	var totalOffset int64 = index * b.RecordSize
 
 	found := false
-	blockOffset := totalOffset / BlockSize
-	indexInBlock := totalOffset % BlockSize
+	blockOffset := totalOffset / b.BlockSize * b.BlockSize
+	indexInBlock := totalOffset % b.BlockSize
 	// Iterate through all blocks,
 	// looking for one whos range contains our index
 	for i := 0; i < len(b.Blocks) && !b.IsEmpty(); i++ {
@@ -66,7 +63,7 @@ func (b *BufferPool) Get(rtn *[]byte, index int64) {
 
 	// If not found, load block into buffer pool
 	if !found {
-		fmt.Println("Loading block for offset ", totalOffset)
+		fmt.Println("Loading block for offset ", blockOffset)
 		block := b.Load(blockOffset)
 		block.Get(rtn, indexInBlock)
 	}
@@ -78,7 +75,7 @@ If no available slots are available, a block is evicted by LRU.
 Offset is the byte offset of the block to be loaded.
 */
 func (b *BufferPool) Load(offset int64) *Block {
-	bytes := make([]byte, BlockSize)
+	bytes := make([]byte, b.BlockSize)
 	_, err := b.File.ReadAt(bytes, offset)
 	if err != nil {
 		panic(err)
@@ -112,5 +109,6 @@ func (b *BufferPool) IsEmpty() bool {
 }
 
 func (b *BufferPool) Shutdown() {
+	// Write all blocks to the file
 	b.File.Close()
 }
