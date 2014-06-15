@@ -5,29 +5,6 @@ import (
 	"os"
 )
 
-type Block struct {
-	Bytes  []byte
-	Offset int64 //number of bytes from beginning of file
-}
-
-func NewBlock(bytes []byte, offset int64) *Block {
-	return &Block{bytes, offset}
-}
-
-// Read len([]bytes) bytes from block at index within block
-func (b *Block) Get(bytes *[]byte, index int64) {
-	numBytes := int64(len(*bytes))
-	endOffset := index + numBytes
-	*bytes = b.Bytes[index:endOffset]
-}
-
-// Updates b.Bytes with bytes at index within block
-func (b *Block) Put(bytes []byte, index int64) {
-	for i := 0; i < len(bytes); i++ {
-		b.Bytes[index+int64(i)] = bytes[i]
-	}
-}
-
 type BufferPool struct {
 	File       *os.File
 	Blocks     map[int64]*BlockElement
@@ -58,18 +35,22 @@ func NewBufferPool(path string, recordSize, blockSize, size int) *BufferPool {
 	}
 }
 
-func (b *BufferPool) GetRecord(index int64) *[]byte {
+func (b *BufferPool) GetRecord(index int64) *Record {
 	block, indexInBlock := b.getBlock(index)
 
 	rtn := make([]byte, b.RecordSize)
 	block.Get(&rtn, indexInBlock)
-	return &rtn
+
+	record := NewRecord(rtn[0:2], rtn[2:4])
+	return record
 }
 
-func (b *BufferPool) WriteRecord(rtn *[]byte, index int64) {
+func (b *BufferPool) WriteRecord(record *Record, index int64) {
 	block, indexInBlock := b.getBlock(index)
 
-	block.Put(*rtn, indexInBlock)
+	bytes := record.ToBytes()
+
+	block.Put(bytes, indexInBlock)
 }
 
 func (b *BufferPool) getBlock(recordIndex int64) (*Block, int64) {
@@ -123,7 +104,7 @@ func (b *BufferPool) IsEmpty() bool {
 }
 
 func (b *BufferPool) flushAll() {
-	for item := b.List.Front(); b.List.Len() != 0; item = b.List.Front() {
+	for item := b.List.Front(); item != nil; item = item.Next() {
 		b.flush(item.Value.(*BlockElement).Block)
 	}
 }

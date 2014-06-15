@@ -13,7 +13,7 @@ func main() {
 	fmt.Println(rtn)
 	//bufferPool.Write(block)
 	//bufferPool.Get(&rtn, 4)
-	rtn = bufferPool.GetRecord(1024)
+	rtn = bufferPool.GetRecord(4096)
 	fmt.Println(rtn)
 	//bufferPool.Write(&rtn, 0)
 	rtn = bufferPool.GetRecord(0)
