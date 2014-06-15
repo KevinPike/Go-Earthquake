@@ -20,7 +20,7 @@ type BlockElement struct {
 }
 
 func NewBufferPool(path string, recordSize, blockSize, size int) *BufferPool {
-	file, err := os.Open(path)
+	file, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
