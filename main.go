@@ -5,16 +5,17 @@ import (
 )
 
 func main() {
-	path := "./Test100.dat"
+	path := "./Test100 Copy.dat"
 
-	bufferPool := NewBufferPool(path, 4, 4096, 1)
+	bufferPool := NewBufferPool(path, 4, 4096, 3)
 	defer bufferPool.Shutdown()
-	rtn := make([]byte, 4)
-	bufferPool.Get(&rtn, 0)
+	rtn := bufferPool.GetRecord(0)
 	fmt.Println(rtn)
-	bufferPool.Get(&rtn, 2)
+	//bufferPool.Write(block)
+	//bufferPool.Get(&rtn, 4)
+	rtn = bufferPool.GetRecord(1024)
 	fmt.Println(rtn)
-	bufferPool.Get(&rtn, 1024)
+	//bufferPool.Write(&rtn, 0)
+	rtn = bufferPool.GetRecord(0)
 	fmt.Println(rtn)
-	bufferPool.Get(&rtn, 1023)
 }

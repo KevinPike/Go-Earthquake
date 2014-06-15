@@ -7,23 +7,24 @@ import (
 
 type Block struct {
 	Bytes  []byte
-	Offset int64
+	Offset int64 //number of bytes from beginning of file
 }
 
 func NewBlock(bytes []byte, offset int64) *Block {
 	return &Block{bytes, offset}
 }
 
-// Read bytes at offset
-func (b *Block) Get(bytes *[]byte, offset int64) {
+// Read len([]bytes) bytes from block at index within block
+func (b *Block) Get(bytes *[]byte, index int64) {
 	numBytes := int64(len(*bytes))
-	endOffset := offset + numBytes
-	*bytes = b.Bytes[offset:endOffset]
+	endOffset := index + numBytes
+	*bytes = b.Bytes[index:endOffset]
 }
 
-func (b *Block) Put(bytes []byte, offset int64) {
+// Updates b.Bytes with bytes at index within block
+func (b *Block) Put(bytes []byte, index int64) {
 	for i := 0; i < len(bytes); i++ {
-		b.Bytes[offset+int64(i)] = bytes[i]
+		b.Bytes[index+int64(i)] = bytes[i]
 	}
 }
 
@@ -57,21 +58,35 @@ func NewBufferPool(path string, recordSize, blockSize, size int) *BufferPool {
 	}
 }
 
-func (b *BufferPool) Get(rtn *[]byte, index int64) {
-	var totalOffset int64 = index * b.RecordSize
+func (b *BufferPool) GetRecord(index int64) *[]byte {
+	block, indexInBlock := b.getBlock(index)
 
-	blockOffset := totalOffset / b.BlockSize * b.BlockSize
-	indexInBlock := totalOffset % b.BlockSize
+	rtn := make([]byte, b.RecordSize)
+	block.Get(&rtn, indexInBlock)
+	return &rtn
+}
 
+func (b *BufferPool) WriteRecord(rtn *[]byte, index int64) {
+	block, indexInBlock := b.getBlock(index)
+
+	block.Put(*rtn, indexInBlock)
+}
+
+func (b *BufferPool) getBlock(recordIndex int64) (*Block, int64) {
+	var totalOffsetInFile int64 = recordIndex * b.RecordSize
+
+	blockOffset := totalOffsetInFile / b.BlockSize * b.BlockSize
+	indexInBlock := totalOffsetInFile % b.BlockSize
+
+	// Check if block exists in cache
 	blockElement, exists := b.Blocks[blockOffset]
 	if exists == false {
-		blockElement = b.Load(blockOffset)
+		blockElement = b.load(blockOffset)
 	}
 
 	b.List.MoveToFront(blockElement.listElement)
 	block := blockElement.Block
-
-	block.Get(rtn, indexInBlock)
+	return block, indexInBlock
 }
 
 /*
@@ -79,7 +94,8 @@ Loads a block into the buffer pool.
 If no available slots are available, a block is evicted by LRU.
 Offset is the byte offset of the block to be loaded.
 */
-func (b *BufferPool) Load(offset int64) *BlockElement {
+func (b *BufferPool) load(offset int64) *BlockElement {
+	// Create new block
 	bytes := make([]byte, b.BlockSize)
 	_, err := b.File.ReadAt(bytes, offset)
 	if err != nil {
@@ -91,9 +107,10 @@ func (b *BufferPool) Load(offset int64) *BlockElement {
 		tail := b.List.Back()
 		blockElement := b.List.Remove(tail).(*BlockElement)
 		delete(b.Blocks, blockElement.Block.Offset)
-		b.Write(blockElement.Block)
+		b.flush(blockElement.Block)
 	}
 
+	// Add block to LRU queue
 	block := NewBlock(bytes, offset)
 	blockElement := &BlockElement{Block: block}
 	blockElement.listElement = b.List.PushFront(blockElement)
@@ -101,18 +118,21 @@ func (b *BufferPool) Load(offset int64) *BlockElement {
 	return blockElement
 }
 
-func (b *BufferPool) Write(block *Block) {
-
-}
-
 func (b *BufferPool) IsEmpty() bool {
 	return b.List.Len() == 0
 }
 
+func (b *BufferPool) flushAll() {
+	for item := b.List.Front(); b.List.Len() != 0; item = b.List.Front() {
+		b.flush(item.Value.(*BlockElement).Block)
+	}
+}
+
+func (b *BufferPool) flush(block *Block) {
+	b.File.WriteAt(block.Bytes, block.Offset)
+}
+
 func (b *BufferPool) Shutdown() {
-	// Write all blocks
-	//for item := b.List.Front(); b.List.Len() != 0; item = b.List.Front() {
-	//	b.Write(item.Value.(*BlockElement).Block)
-	//}
+	b.flushAll()
 	b.File.Close()
 }
