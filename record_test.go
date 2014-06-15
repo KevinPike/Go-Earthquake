@@ -23,3 +23,27 @@ func TestToBytes(t *testing.T) {
 		t.Error("Records do not match")
 	}
 }
+
+func TestEquals(t *testing.T) {
+	key := []byte{0x18, 0x2d}
+	value := []byte{0x44, 0x54}
+	record1 := NewRecord(key, value)
+	record2 := NewRecord(key, value)
+
+	if !record1.Equals(record2) {
+		t.Error("Equals failed")
+	}
+}
+
+func TestNotEquals(t *testing.T) {
+	key := []byte{0x18, 0x2d}
+	value := []byte{0x44, 0x54}
+	key2 := []byte{0x18, 0x20}
+	value2 := []byte{0x44, 0x40}
+	record1 := NewRecord(key, value)
+	record2 := NewRecord(key2, value2)
+
+	if record1.Equals(record2) {
+		t.Error("Equals failed")
+	}
+}

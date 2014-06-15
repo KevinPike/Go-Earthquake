@@ -33,7 +33,7 @@ func NewRecord(key []byte, value []byte) *Record {
 	return record
 }
 
-func (record Record) ToBytes() []byte {
+func (record *Record) ToBytes() []byte {
 	w := new(bytes.Buffer)
 	err := binary.Write(w, binary.BigEndian, record.Key)
 	if err != nil {
@@ -46,4 +46,8 @@ func (record Record) ToBytes() []byte {
 	}
 
 	return w.Bytes()
+}
+
+func (record *Record) Equals(other *Record) bool {
+	return record.Key == other.Key && record.Value == other.Value
 }
