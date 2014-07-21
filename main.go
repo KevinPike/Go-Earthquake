@@ -3,8 +3,12 @@ package main
 func main() {
 	path := "./Test100 Copy.dat"
 
-	bufferHeap := NewBufferHeap(path, 4, 4096, 20)
+	report := NewReport(path)
+
+	bufferHeap := NewBufferHeap(path, 4, 4096, 20, report)
 	defer bufferHeap.Shutdown()
 
-	HeapSort(bufferHeap)
+	bufferHeap.Sort()
+
+	report.Print()
 }

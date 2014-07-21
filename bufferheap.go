@@ -5,11 +5,12 @@ import (
 )
 
 type BufferHeap struct {
-	bp   *BufferPool
-	Size int
+	bp     *BufferPool
+	Size   int
+	report *Report
 }
 
-func NewBufferHeap(file string, recordSize, blockSize, capacity int) *BufferHeap {
+func NewBufferHeap(file string, recordSize, blockSize, capacity int, report *Report) *BufferHeap {
 
 	info, err := os.Stat(file)
 
@@ -20,8 +21,9 @@ func NewBufferHeap(file string, recordSize, blockSize, capacity int) *BufferHeap
 	size := int(info.Size() / int64(recordSize))
 
 	return &BufferHeap{
-		NewBufferPool(file, recordSize, blockSize, capacity),
+		NewBufferPool(file, recordSize, blockSize, capacity, report),
 		size,
+		report,
 	}
 }
 
@@ -43,6 +45,12 @@ func (heap *BufferHeap) Swap(i, j int) {
 
 	heap.bp.WriteRecord(jRecord, i64)
 	heap.bp.WriteRecord(iRecord, j64)
+}
+
+func (heap *BufferHeap) Sort() {
+	heap.report.Start()
+	HeapSort(heap)
+	heap.report.End()
 }
 
 func (heap *BufferHeap) Shutdown() {

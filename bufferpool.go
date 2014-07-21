@@ -12,6 +12,7 @@ type BufferPool struct {
 	RecordSize int64
 	BlockSize  int64
 	Capacity   int
+	Report     *Report
 }
 
 type BlockElement struct {
@@ -19,7 +20,7 @@ type BlockElement struct {
 	listElement *list.Element
 }
 
-func NewBufferPool(path string, recordSize, blockSize, size int) *BufferPool {
+func NewBufferPool(path string, recordSize, blockSize, size int, report *Report) *BufferPool {
 	file, err := os.OpenFile(path, os.O_RDWR, os.ModePerm)
 	if err != nil {
 		panic(err)
@@ -32,6 +33,7 @@ func NewBufferPool(path string, recordSize, blockSize, size int) *BufferPool {
 		RecordSize: int64(recordSize),
 		BlockSize:  int64(blockSize),
 		Capacity:   size,
+		Report:     report,
 	}
 }
 
@@ -63,6 +65,9 @@ func (b *BufferPool) getBlock(recordIndex int64) (*Block, int64) {
 	blockElement, exists := b.Blocks[blockOffset]
 	if exists == false {
 		blockElement = b.load(blockOffset)
+		b.Report.CacheMisses++
+	} else {
+		b.Report.CacheHits++
 	}
 
 	b.List.MoveToFront(blockElement.listElement)
@@ -82,6 +87,7 @@ func (b *BufferPool) load(offset int64) *BlockElement {
 	if err != nil {
 		panic(err)
 	}
+	b.Report.DiskReads++
 
 	// Evict
 	if b.List.Len() == b.Capacity {
@@ -111,6 +117,7 @@ func (b *BufferPool) flushAll() {
 
 func (b *BufferPool) flush(block *Block) {
 	b.File.WriteAt(block.Bytes, block.Offset)
+	b.Report.DiskWrites++
 }
 
 func (b *BufferPool) Shutdown() {
